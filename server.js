@@ -1,15 +1,51 @@
 var express = require('express');
-
+var session = require('cookie-session'); // Charge le middleware de sessions
+var bodyParser = require('body-parser'); // Charge le middleware de gestion des paramètres
+var urlencodedParser = bodyParser.urlencoded({ extended: false });
+var port = 8080;
 var app = express();
 
-app.get('/', function(req, res) {
-    res.setHeader('Content-Type', 'text/plain');
-    res.send('Vous êtes à l\'accueil');
-});
 
-app.get('/etage/:etagenum/chambre', function(req, res) {
-    res.setHeader('Content-Type', 'text/plain');
-    res.end('Vous êtes à la chambre de l\'étage n°' + req.params.etagenum);
-});
+/* On utilise les sessions */
+app.use(session({secret: 'todotopsecret'}))
 
-app.listen(8080);
+
+/* S'il n'y a pas de todolist dans la session,
+on en crée une vide sous forme d'array avant la suite */
+.use(function(req, res, next){
+    if (typeof(req.session.todolist) == 'undefined') {
+        req.session.todolist = [];
+    }
+    next();
+})
+
+/* On affiche la todolist et le formulaire */
+.get('/todo', function(req, res) { 
+    res.render('index.ejs', {todolist: req.session.todolist});
+})
+
+/* On ajoute un élément à la todolist */
+.post('/todo/ajouter/', urlencodedParser, function(req, res) {
+    if (req.body.newtodo != '') {
+        req.session.todolist.push(req.body.newtodo);
+    }
+    res.redirect('/todo');
+})
+
+/* Supprime un élément de la todolist */
+.get('/todo/supprimer/:id', function(req, res) {
+    if (req.params.id != '') {
+        req.session.todolist.splice(req.params.id, 1);
+        console.log(req.params);
+    }
+    res.redirect('/todo');
+})
+
+/* On redirige vers la todolist si la page demandée n'est pas trouvée */
+.use(function(req, res, next){
+    res.redirect('/todo');
+})
+
+.listen(port, (req, res) => {
+    console.log('Server listen on '+port);
+});
